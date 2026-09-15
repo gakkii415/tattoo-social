@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0b0c" />
+  <meta name="description" content="Tattoo Social — tattoo artwork discovery and creator network." />
+  <title>Tattoo Social</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./config.js"></script>
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#feed" aria-label="Tattoo Social home">
+        <span class="brand-mark">TS</span>
+        <span class="brand-copy">Tattoo<br>Social</span>
+      </a>
+      <nav class="side-nav" aria-label="Main navigation">
+        <button data-route="feed" class="nav-item active"><span>⌂</span><b>Feed</b></button>
+        <button data-route="discover" class="nav-item"><span>⌕</span><b>Discover</b></button>
+        <button data-route="saved" class="nav-item"><span>◇</span><b>Saved</b></button>
+        <button data-route="notifications" class="nav-item"><span>○</span><b>Notifications</b><em id="notificationBadge" hidden></em></button>
+        <button data-route="profile" class="nav-item"><span>◉</span><b>Profile</b></button>
+      </nav>
+      <button id="newPostBtn" class="primary-action">＋ New post</button>
+      <div class="sidebar-bottom">
+        <div id="connectionBadge" class="connection-badge">Demo mode</div>
+        <button id="authBtn" class="text-button">Sign in</button>
+      </div>
+    </aside>
+
+    <main class="main-panel">
+      <header class="mobile-header">
+        <a class="mobile-brand" href="#feed">Tattoo Social</a>
+        <button id="mobileNewPost" class="icon-button">＋</button>
+      </header>
+      <section id="screen" class="screen" aria-live="polite"></section>
+    </main>
+
+    <aside class="right-rail">
+      <div class="rail-search">
+        <input id="globalSearch" type="search" placeholder="Search tattoo, style, artist" autocomplete="off" />
+      </div>
+      <section class="rail-card">
+        <div class="rail-card-head"><h3>Styles</h3><button data-route="discover">View all</button></div>
+        <div id="styleChips" class="style-chips"></div>
+      </section>
+      <section class="rail-card">
+        <div class="rail-card-head"><h3>Suggested artists</h3></div>
+        <div id="suggestedArtists" class="artist-list"></div>
+      </section>
+    </aside>
+
+    <nav class="bottom-nav" aria-label="Mobile navigation">
+      <button data-route="feed" class="active"><span>⌂</span><small>Feed</small></button>
+      <button data-route="discover"><span>⌕</span><small>Discover</small></button>
+      <button id="bottomNewPost" class="new-post-circle">＋</button>
+      <button data-route="notifications"><span>○</span><small>Alerts</small></button>
+      <button data-route="profile"><span>◉</span><small>Profile</small></button>
+    </nav>
+  </div>
+
+  <dialog id="postDialog" class="modal">
+    <form id="postForm" method="dialog" class="modal-card">
+      <div class="modal-head">
+        <div><p class="eyebrow">CREATE</p><h2>Share your work</h2></div>
+        <button type="button" class="icon-button modal-close" aria-label="Close">×</button>
+      </div>
+      <label class="upload-zone" id="uploadZone">
+        <input id="postImage" type="file" accept="image/*" hidden required />
+        <div id="uploadPreview" class="upload-preview"><span>＋</span><strong>Add tattoo image</strong><small>JPG, PNG, WEBP</small></div>
+      </label>
+      <label class="field"><span>Caption</span><textarea id="postCaption" rows="3" maxlength="280" placeholder="Design, placement, story…"></textarea></label>
+      <label class="field"><span>Tags</span><input id="postTags" maxlength="100" placeholder="fine line, floral, blackwork" /></label>
+      <div class="modal-actions"><button type="button" class="secondary-button modal-close">Cancel</button><button id="publishBtn" type="submit" class="primary-action">Publish</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="authDialog" class="modal">
+    <form id="authForm" method="dialog" class="modal-card compact">
+      <div class="modal-head">
+        <div><p class="eyebrow">ACCOUNT</p><h2 id="authTitle">Sign in</h2></div>
+        <button type="button" class="icon-button auth-close" aria-label="Close">×</button>
+      </div>
+      <label class="field"><span>Email</span><input id="authEmail" type="email" required autocomplete="email" /></label>
+      <label class="field"><span>Password</span><input id="authPassword" type="password" minlength="6" required autocomplete="current-password" /></label>
+      <button id="authSubmit" type="submit" class="primary-action full">Sign in</button>
+      <button id="authSwitch" type="button" class="text-button centered">Create a new account</button>
+      <p id="authHint" class="form-hint">Demo mode works without an account. Connect Supabase for real multi-user accounts.</p>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
