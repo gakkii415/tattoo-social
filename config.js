@@ -1,7 +1,6 @@
 // Public browser configuration.
-// Supabase anon keys are designed to be used client-side when Row Level Security is enabled.
-// Fill these two values after creating the Supabase project and running supabase/schema.sql.
+// Supabase publishable keys are designed to be used client-side when Row Level Security is enabled.
 window.TATTOO_SOCIAL_CONFIG = {
-  supabaseUrl: "",
-  supabaseAnonKey: ""
+  supabaseUrl: "https://zyahedrhfbwximspbzfe.supabase.co",
+  supabaseAnonKey: "sb_publishable_XoE8ItiHiKSAkRNkYCISYg_rxlTjUEK"
 };
