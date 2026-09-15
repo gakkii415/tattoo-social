@@ -1,5 +1,5 @@
 -- Tattoo Social schema for Supabase
--- Run this once in the Supabase SQL editor.
+-- Fresh-project setup. Security and performance settings match production.
 
 create extension if not exists pgcrypto;
 
@@ -60,7 +60,10 @@ create index if not exists posts_user_id_idx on public.posts(user_id, created_at
 create index if not exists posts_style_idx on public.posts(style);
 create index if not exists follows_following_idx on public.follows(following_id);
 create index if not exists likes_post_idx on public.likes(post_id);
+create index if not exists saves_post_id_idx on public.saves(post_id);
 create index if not exists notifications_user_idx on public.notifications(user_id, created_at desc);
+create index if not exists notifications_actor_id_idx on public.notifications(actor_id);
+create index if not exists notifications_post_id_idx on public.notifications(post_id);
 
 -- Create a profile automatically for every new authenticated user.
 create or replace function public.handle_new_user()
@@ -128,6 +131,11 @@ drop trigger if exists follows_notify on public.follows;
 create trigger follows_notify after insert on public.follows
 for each row execute procedure public.notify_follow();
 
+-- These functions are trigger-only. Do not expose them as RPC endpoints.
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
+revoke execute on function public.notify_like() from public, anon, authenticated;
+revoke execute on function public.notify_follow() from public, anon, authenticated;
+
 alter table public.profiles enable row level security;
 alter table public.posts enable row level security;
 alter table public.follows enable row level security;
@@ -137,33 +145,33 @@ alter table public.notifications enable row level security;
 
 -- Profiles
 create policy "profiles are public" on public.profiles for select using (true);
-create policy "users insert own profile" on public.profiles for insert with check (auth.uid() = id);
-create policy "users update own profile" on public.profiles for update using (auth.uid() = id) with check (auth.uid() = id);
+create policy "users insert own profile" on public.profiles for insert with check ((select auth.uid()) = id);
+create policy "users update own profile" on public.profiles for update using ((select auth.uid()) = id) with check ((select auth.uid()) = id);
 
 -- Posts
 create policy "posts are public" on public.posts for select using (true);
-create policy "users create own posts" on public.posts for insert with check (auth.uid() = user_id);
-create policy "users update own posts" on public.posts for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
-create policy "users delete own posts" on public.posts for delete using (auth.uid() = user_id);
+create policy "users create own posts" on public.posts for insert with check ((select auth.uid()) = user_id);
+create policy "users update own posts" on public.posts for update using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+create policy "users delete own posts" on public.posts for delete using ((select auth.uid()) = user_id);
 
 -- Follows are public so follower/following relationships can be displayed.
 create policy "follows are public" on public.follows for select using (true);
-create policy "users follow as themselves" on public.follows for insert with check (auth.uid() = follower_id);
-create policy "users unfollow as themselves" on public.follows for delete using (auth.uid() = follower_id);
+create policy "users follow as themselves" on public.follows for insert with check ((select auth.uid()) = follower_id);
+create policy "users unfollow as themselves" on public.follows for delete using ((select auth.uid()) = follower_id);
 
 -- Likes are public for like counts.
 create policy "likes are public" on public.likes for select using (true);
-create policy "users like as themselves" on public.likes for insert with check (auth.uid() = user_id);
-create policy "users remove own likes" on public.likes for delete using (auth.uid() = user_id);
+create policy "users like as themselves" on public.likes for insert with check ((select auth.uid()) = user_id);
+create policy "users remove own likes" on public.likes for delete using ((select auth.uid()) = user_id);
 
 -- Saves are private.
-create policy "users read own saves" on public.saves for select using (auth.uid() = user_id);
-create policy "users save as themselves" on public.saves for insert with check (auth.uid() = user_id);
-create policy "users remove own saves" on public.saves for delete using (auth.uid() = user_id);
+create policy "users read own saves" on public.saves for select using ((select auth.uid()) = user_id);
+create policy "users save as themselves" on public.saves for insert with check ((select auth.uid()) = user_id);
+create policy "users remove own saves" on public.saves for delete using ((select auth.uid()) = user_id);
 
 -- Notifications belong only to their recipient.
-create policy "users read own notifications" on public.notifications for select using (auth.uid() = user_id);
-create policy "users update own notifications" on public.notifications for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "users read own notifications" on public.notifications for select using ((select auth.uid()) = user_id);
+create policy "users update own notifications" on public.notifications for update using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 
 -- Public image bucket. Uploads are restricted to the authenticated user's own folder.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -178,14 +186,14 @@ create policy "users upload to own tattoo folder"
 on storage.objects for insert to authenticated
 with check (
   bucket_id = 'tattoo-images'
-  and (storage.foldername(name))[1] = auth.uid()::text
+  and (storage.foldername(name))[1] = (select auth.uid())::text
 );
 
 create policy "users update own tattoo images"
 on storage.objects for update to authenticated
-using (bucket_id = 'tattoo-images' and (storage.foldername(name))[1] = auth.uid()::text)
-with check (bucket_id = 'tattoo-images' and (storage.foldername(name))[1] = auth.uid()::text);
+using (bucket_id = 'tattoo-images' and (storage.foldername(name))[1] = (select auth.uid())::text)
+with check (bucket_id = 'tattoo-images' and (storage.foldername(name))[1] = (select auth.uid())::text);
 
 create policy "users delete own tattoo images"
 on storage.objects for delete to authenticated
-using (bucket_id = 'tattoo-images' and (storage.foldername(name))[1] = auth.uid()::text);
+using (bucket_id = 'tattoo-images' and (storage.foldername(name))[1] = (select auth.uid())::text);
