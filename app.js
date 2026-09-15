@@ -10,6 +10,17 @@ const postDialog = $('#postDialog');
 const authDialog = $('#authDialog');
 
 const STYLES = ['fine line', 'blackwork', 'floral', 'ornamental', 'japanese', 'lettering', 'micro', 'abstract'];
+const STYLE_LABELS = {
+  'fine line': 'ファインライン',
+  blackwork: 'ブラックワーク',
+  floral: 'フローラル',
+  ornamental: 'オーナメンタル',
+  japanese: '和彫り・和風',
+  lettering: 'レタリング',
+  micro: 'マイクロ',
+  abstract: 'アブストラクト',
+  tattoo: 'タトゥー'
+};
 
 const state = {
   route: 'feed',
@@ -27,6 +38,10 @@ const state = {
   busy: false,
   authMode: 'signin'
 };
+
+function styleLabel(value = 'tattoo') {
+  return STYLE_LABELS[String(value).toLowerCase()] || value;
+}
 
 function artSvg(seed, title) {
   const palettes = [
@@ -52,29 +67,31 @@ function escapeXml(s='') { return String(s).replace(/[<>&'\"]/g, c => ({'<':'&lt
 function escapeHtml(s='') { return String(s).replace(/[&<>'\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c])); }
 function fmtTime(ts) {
   const d = new Date(ts); const sec = Math.max(1,(Date.now()-d.getTime())/1000);
-  if (sec < 60) return 'now'; if (sec < 3600) return `${Math.floor(sec/60)}m`; if (sec < 86400) return `${Math.floor(sec/3600)}h`;
-  return `${Math.floor(sec/86400)}d`;
+  if (sec < 60) return 'たった今';
+  if (sec < 3600) return `${Math.floor(sec/60)}分前`;
+  if (sec < 86400) return `${Math.floor(sec/3600)}時間前`;
+  return `${Math.floor(sec/86400)}日前`;
 }
 function initial(name='?') { return name.trim().slice(0,1).toUpperCase() || '?'; }
 function showToast(msg) { toast.textContent = msg; toast.classList.add('show'); clearTimeout(showToast.t); showToast.t=setTimeout(()=>toast.classList.remove('show'),2200); }
 function avatarHtml(p, cls='avatar') { return p?.avatar_url ? `<img class="${cls}" src="${escapeHtml(p.avatar_url)}" alt="">` : `<div class="${cls} fallback">${escapeHtml(initial(p?.display_name || p?.username))}</div>`; }
 
-const DEMO_KEY = 'tattoo-social-demo-v2';
-const DEMO_ME = { id:'demo-me', username:'you', display_name:'Your Studio', bio:'Tattoo artist · Kyoto', avatar_url:'' };
+const DEMO_KEY = 'tattoo-social-demo-v3-ja';
+const DEMO_ME = { id:'demo-me', username:'you', display_name:'あなたのスタジオ', bio:'タトゥーアーティスト · 京都', avatar_url:'' };
 const DEMO_PROFILES = [
   DEMO_ME,
-  {id:'u1',username:'mio.ink',display_name:'Mio',bio:'Fine line · botanical · Tokyo',avatar_url:''},
-  {id:'u2',username:'noirneedle',display_name:'Noir Needle',bio:'Blackwork & ornamental · Osaka',avatar_url:''},
-  {id:'u3',username:'haru.lines',display_name:'Haru',bio:'Micro tattoo · Kyoto',avatar_url:''},
-  {id:'u4',username:'sumi.room',display_name:'Sumi Room',bio:'Japanese inspired · Kobe',avatar_url:''}
+  {id:'u1',username:'mio.ink',display_name:'Mio',bio:'ファインライン · ボタニカル · 東京',avatar_url:''},
+  {id:'u2',username:'noirneedle',display_name:'Noir Needle',bio:'ブラックワーク & オーナメンタル · 大阪',avatar_url:''},
+  {id:'u3',username:'haru.lines',display_name:'Haru',bio:'マイクロタトゥー · 京都',avatar_url:''},
+  {id:'u4',username:'sumi.room',display_name:'Sumi Room',bio:'和風デザイン · 神戸',avatar_url:''}
 ];
 const DEMO_POSTS = [
-  ['p1','u1','Moon phase botanical','fine line','A quiet moon study with small botanical details.'],
-  ['p2','u2','Ornamental spine piece','ornamental','Custom ornamental flow designed for the back.'],
-  ['p3','u3','Tiny swallow','micro','Small movement study, healed result.'],
-  ['p4','u4','Peony and wind','japanese','Peony composition inspired by traditional movement.'],
-  ['p5','u1','Wildflower linework','floral','Freehand wildflower placement for the inner arm.'],
-  ['p6','u2','Black geometry','blackwork','Negative space and geometric rhythm.']
+  ['p1','u1','月と植物','fine line','静かな月のモチーフに、小さな植物のディテールを合わせたデザイン。'],
+  ['p2','u2','背中のオーナメンタル','ornamental','背中の流れに合わせて設計したカスタム・オーナメンタル。'],
+  ['p3','u3','小さなツバメ','micro','小さな動きのあるツバメ。ヒール後の仕上がりです。'],
+  ['p4','u4','牡丹と風','japanese','伝統的な流れを意識した牡丹の構成。'],
+  ['p5','u1','ワイルドフラワー','floral','腕の内側に合わせてフリーハンドで配置した野花のラインワーク。'],
+  ['p6','u2','ブラックジオメトリー','blackwork','ネガティブスペースと幾何学のリズムを組み合わせたデザイン。']
 ].map((x,i)=>({ id:x[0], user_id:x[1], image_url:artSvg(i+1,x[2]), caption:x[4], tags:[x[3], i%2?'custom':'minimal'], style:x[3], created_at:new Date(Date.now()-(i+1)*52*60*1000).toISOString(), like_count:[32,18,51,27,42,16][i], save_count:[8,11,13,5,17,7][i] }));
 
 function demoLoad() {
@@ -95,7 +112,7 @@ function demoSave() {
 }
 
 async function boot() {
-  $('#connectionBadge').textContent = LIVE ? 'Supabase connected' : 'Demo mode';
+  $('#connectionBadge').textContent = LIVE ? 'Supabase 接続済み' : 'デモモード';
   $('#connectionBadge').classList.toggle('live', LIVE);
   renderStyleChips();
   wireGlobalEvents();
@@ -119,9 +136,9 @@ async function refreshLiveIdentity() {
   state.me = null;
   if (user) {
     const { data } = await sb.from('profiles').select('*').eq('id',user.id).maybeSingle();
-    state.me = data || {id:user.id, username:user.email?.split('@')[0] || 'user', display_name:'New artist', bio:'', avatar_url:''};
+    state.me = data || {id:user.id, username:user.email?.split('@')[0] || 'user', display_name:'新しいアーティスト', bio:'', avatar_url:''};
   }
-  $('#authBtn').textContent = user ? 'Sign out' : 'Sign in';
+  $('#authBtn').textContent = user ? 'ログアウト' : 'ログイン';
 }
 
 async function refreshAll() {
@@ -144,7 +161,7 @@ async function refreshAll() {
       state.following = new Set((followRes.data||[]).map(x=>x.following_id));
     } else { state.likes.clear(); state.saves.clear(); state.following.clear(); }
     await loadLivePosts();
-  } catch (e) { console.error(e); showToast('Could not load live data'); }
+  } catch (e) { console.error(e); showToast('データを読み込めませんでした'); }
   renderRightRail(); updateBadge();
 }
 
@@ -165,7 +182,7 @@ async function loadLivePosts() {
   state.posts=(posts||[]).map(p=>({...p,profile:profMap.get(p.user_id),like_count:lc[p.id]||0,save_count:sc[p.id]||0,style:p.style || p.tags?.[0] || 'tattoo'}));
 }
 
-function profileFor(id) { return state.profiles.find(p=>p.id===id) || (state.me?.id===id?state.me:null) || {id,username:'artist',display_name:'Artist',bio:'',avatar_url:''}; }
+function profileFor(id) { return state.profiles.find(p=>p.id===id) || (state.me?.id===id?state.me:null) || {id,username:'artist',display_name:'アーティスト',bio:'',avatar_url:''}; }
 
 function readRoute() {
   const raw=(location.hash||'#feed').slice(1); const [route,param]=raw.split(':');
@@ -184,62 +201,62 @@ function empty(title,body){ return `<div class="empty"><strong>${escapeHtml(titl
 function postCard(p) {
   const prof=p.profile || profileFor(p.user_id); const liked=state.likes.has(p.id), saved=state.saves.has(p.id), following=state.following.has(p.user_id), own=state.me?.id===p.user_id;
   return `<article class="post-card" data-post="${p.id}">
-    <div class="post-image-wrap"><img class="post-image" src="${escapeHtml(p.image_url)}" alt="Tattoo artwork" loading="lazy"><span class="post-style">${escapeHtml(p.style||p.tags?.[0]||'tattoo')}</span></div>
+    <div class="post-image-wrap"><img class="post-image" src="${escapeHtml(p.image_url)}" alt="タトゥー作品" loading="lazy"><span class="post-style">${escapeHtml(styleLabel(p.style||p.tags?.[0]||'tattoo'))}</span></div>
     <div class="post-body">
-      <div class="post-author-row">${avatarHtml(prof)}<button class="author-copy" data-profile="${prof.id}" style="border:0;background:transparent;text-align:left;padding:0;cursor:pointer"><strong>${escapeHtml(prof.display_name||prof.username)}</strong><small>@${escapeHtml(prof.username||'artist')} · ${fmtTime(p.created_at)}</small></button>${own?'':`<button class="follow-mini ${following?'following':''}" data-follow="${prof.id}">${following?'Following':'Follow'}</button>`}</div>
+      <div class="post-author-row">${avatarHtml(prof)}<button class="author-copy" data-profile="${prof.id}" style="border:0;background:transparent;text-align:left;padding:0;cursor:pointer"><strong>${escapeHtml(prof.display_name||prof.username)}</strong><small>@${escapeHtml(prof.username||'artist')} · ${fmtTime(p.created_at)}</small></button>${own?'':`<button class="follow-mini ${following?'following':''}" data-follow="${prof.id}">${following?'フォロー中':'フォロー'}</button>`}</div>
       ${p.caption?`<p class="caption">${escapeHtml(p.caption)}</p>`:''}
-      <div class="tags">${(p.tags||[]).map(t=>`<button class="tag" data-search="${escapeHtml(t)}" style="border:0;background:transparent;padding:0;cursor:pointer">#${escapeHtml(t)}</button>`).join('')}</div>
-      <div class="post-actions"><button class="icon-action like ${liked?'active':''}" data-like="${p.id}">♥ <span>${p.like_count||0}</span></button><button class="icon-action ${saved?'active':''}" data-save="${p.id}">◇ <span>${saved?'Saved':'Save'}</span></button></div>
+      <div class="tags">${(p.tags||[]).map(t=>`<button class="tag" data-search="${escapeHtml(t)}" style="border:0;background:transparent;padding:0;cursor:pointer">#${escapeHtml(styleLabel(t))}</button>`).join('')}</div>
+      <div class="post-actions"><button class="icon-action like ${liked?'active':''}" data-like="${p.id}">♥ <span>${p.like_count||0}</span></button><button class="icon-action ${saved?'active':''}" data-save="${p.id}">◇ <span>${saved?'保存済み':'保存'}</span></button></div>
     </div>
   </article>`;
 }
 
 function renderFeed(){
   const list = LIVE ? state.posts : state.posts.filter(p=>state.feedMode==='latest' || p.user_id===state.me?.id || state.following.has(p.user_id));
-  screen.innerHTML = `${pageHead('TATTOO NETWORK','Your feed','Artwork from artists you follow, plus your own posts.')}
-    <div class="feed-tabs"><button class="pill ${state.feedMode==='following'?'active':''}" data-feed-mode="following">Following</button><button class="pill ${state.feedMode==='latest'?'active':''}" data-feed-mode="latest">Latest</button></div>
-    ${list.length?`<div class="post-grid">${list.map(postCard).join('')}</div>`:empty('No posts yet','Follow artists or publish the first work in your feed.')}`;
+  screen.innerHTML = `${pageHead('フィード','あなたのフィード','フォロー中のアーティストと自分の作品が表示されます。')}
+    <div class="feed-tabs"><button class="pill ${state.feedMode==='following'?'active':''}" data-feed-mode="following">フォロー中</button><button class="pill ${state.feedMode==='latest'?'active':''}" data-feed-mode="latest">新着</button></div>
+    ${list.length?`<div class="post-grid">${list.map(postCard).join('')}</div>`:empty('まだ投稿がありません','アーティストをフォローするか、最初の作品を投稿してください。')}`;
 }
 
 function renderDiscover(){
   const q=state.search.trim().toLowerCase();
   const profiles=state.profiles.filter(p=>!q || [p.username,p.display_name,p.bio].join(' ').toLowerCase().includes(q));
   const posts=state.posts.filter(p=>!q || [p.caption,p.style,...(p.tags||[])].join(' ').toLowerCase().includes(q));
-  screen.innerHTML=`${pageHead('DISCOVER','Find your next reference','Search artists, styles and tattoo work.')}
-    <div class="discover-search"><input id="discoverSearch" class="search-input" type="search" value="${escapeHtml(state.search)}" placeholder="fine line, dragon, artist…"></div>
-    <div class="style-chips">${STYLES.map(s=>`<button data-search="${s}">${s}</button>`).join('')}</div>
-    <section class="result-section"><h2>Artists</h2>${profiles.length?profiles.slice(0,8).map(profileResult).join(''):empty('No artists','Try another keyword.')}</section>
-    <section class="result-section"><h2>Work</h2>${posts.length?`<div class="post-grid">${posts.map(postCard).join('')}</div>`:empty('No work found','Try another style or keyword.')}</section>`;
+  screen.innerHTML=`${pageHead('見つける','作品とアーティストを探す','アーティスト、スタイル、タトゥー作品を検索できます。')}
+    <div class="discover-search"><input id="discoverSearch" class="search-input" type="search" value="${escapeHtml(state.search)}" placeholder="ファインライン、ドラゴン、アーティスト名など"></div>
+    <div class="style-chips">${STYLES.map(s=>`<button data-search="${s}">${styleLabel(s)}</button>`).join('')}</div>
+    <section class="result-section"><h2>アーティスト</h2>${profiles.length?profiles.slice(0,8).map(profileResult).join(''):empty('見つかりませんでした','別のキーワードで検索してください。')}</section>
+    <section class="result-section"><h2>作品</h2>${posts.length?`<div class="post-grid">${posts.map(postCard).join('')}</div>`:empty('作品が見つかりません','別のスタイルやキーワードを試してください。')}</section>`;
   const input=$('#discoverSearch'); input?.addEventListener('input',()=>{state.search=input.value; clearTimeout(input._t); input._t=setTimeout(renderDiscover,120);});
 }
-function profileResult(p){ const f=state.following.has(p.id), own=state.me?.id===p.id; return `<div class="profile-card">${avatarHtml(p)}<button class="profile-card-copy" data-profile="${p.id}" style="border:0;background:transparent;text-align:left;padding:0;cursor:pointer"><strong>${escapeHtml(p.display_name||p.username)}</strong><span>@${escapeHtml(p.username)} · ${escapeHtml(p.bio||'Tattoo artist')}</span></button>${own?'':`<button class="follow-mini ${f?'following':''}" data-follow="${p.id}">${f?'Following':'Follow'}</button>`}</div>`; }
+function profileResult(p){ const f=state.following.has(p.id), own=state.me?.id===p.id; return `<div class="profile-card">${avatarHtml(p)}<button class="profile-card-copy" data-profile="${p.id}" style="border:0;background:transparent;text-align:left;padding:0;cursor:pointer"><strong>${escapeHtml(p.display_name||p.username)}</strong><span>@${escapeHtml(p.username)} · ${escapeHtml(p.bio||'タトゥーアーティスト')}</span></button>${own?'':`<button class="follow-mini ${f?'following':''}" data-follow="${p.id}">${f?'フォロー中':'フォロー'}</button>`}</div>`; }
 
-function renderSaved(){ const list=state.posts.filter(p=>state.saves.has(p.id)); screen.innerHTML=`${pageHead('COLLECTION','Saved work','References and artwork you want to return to.')}${list.length?`<div class="post-grid">${list.map(postCard).join('')}</div>`:empty('Nothing saved yet','Tap Save on artwork to build your collection.')}`; }
+function renderSaved(){ const list=state.posts.filter(p=>state.saves.has(p.id)); screen.innerHTML=`${pageHead('コレクション','保存した作品','あとで見返したい作品や参考資料をまとめておけます。')}${list.length?`<div class="post-grid">${list.map(postCard).join('')}</div>`:empty('まだ保存した作品がありません','気になる作品の「保存」を押すとここに追加されます。')}`; }
 
 function renderNotifications(){
-  const list=state.notifications; screen.innerHTML=`${pageHead('ACTIVITY','Notifications','Likes and new followers appear here.')}${list.length?`<div class="notification-list">${list.map(notificationHtml).join('')}</div>`:empty('No notifications','When people interact with your work, you will see it here.')}`;
+  const list=state.notifications; screen.innerHTML=`${pageHead('アクティビティ','通知','いいねや新しいフォローがここに表示されます。')}${list.length?`<div class="notification-list">${list.map(notificationHtml).join('')}</div>`:empty('通知はありません','あなたの作品に反応があると、ここに表示されます。')}`;
   if (LIVE && state.me) sb.from('notifications').update({read_at:new Date().toISOString()}).eq('user_id',state.me.id).is('read_at',null).then(()=>{state.notifications.forEach(n=>n.read_at=n.read_at||new Date().toISOString());updateBadge();});
   else { state.notifications.forEach(n=>n.read_at=n.read_at||new Date().toISOString()); demoSave(); updateBadge(); }
 }
-function notificationHtml(n){ const p=profileFor(n.actor_id); const text=n.type==='follow'?'started following you':n.type==='save'?'saved your work':'liked your work'; return `<div class="notification ${n.read_at?'':'unread'}">${avatarHtml(p)}<div class="notification-copy"><p><strong>${escapeHtml(p.display_name||p.username)}</strong> ${text}</p><small>${fmtTime(n.created_at)}</small></div></div>`; }
+function notificationHtml(n){ const p=profileFor(n.actor_id); const text=n.type==='follow'?'があなたをフォローしました':n.type==='save'?'があなたの作品を保存しました':'があなたの作品にいいねしました'; return `<div class="notification ${n.read_at?'':'unread'}">${avatarHtml(p)}<div class="notification-copy"><p><strong>${escapeHtml(p.display_name||p.username)}</strong>${text}</p><small>${fmtTime(n.created_at)}</small></div></div>`; }
 
 function renderProfile(){
   const id=state.routeParam || state.me?.id || state.profiles[0]?.id; const p=profileFor(id); const list=state.posts.filter(x=>x.user_id===id); const followers = LIVE ? '—' : [...state.following].includes(id)?'1':'0'; const following = id===state.me?.id ? state.following.size : '—';
-  screen.innerHTML=`${pageHead('PROFILE','Artist profile')}
-    <section class="profile-hero"><div class="profile-top">${avatarHtml(p)}<div class="profile-top-copy"><h1>${escapeHtml(p.display_name||p.username)}</h1><p>@${escapeHtml(p.username)}<br>${escapeHtml(p.bio||'Tattoo artist')}</p></div>${state.me?.id!==id?`<button class="primary-action" data-follow="${id}">${state.following.has(id)?'Following':'Follow'}</button>`:''}</div><div class="profile-stats"><div class="stat"><b>${list.length}</b><span>Posts</span></div><div class="stat"><b>${followers}</b><span>Followers</span></div><div class="stat"><b>${following}</b><span>Following</span></div></div></section>
-    ${list.length?`<div class="post-grid">${list.map(postCard).join('')}</div>`:empty('No work yet','Published tattoo work will appear here.')}`;
+  screen.innerHTML=`${pageHead('プロフィール','アーティストプロフィール')}
+    <section class="profile-hero"><div class="profile-top">${avatarHtml(p)}<div class="profile-top-copy"><h1>${escapeHtml(p.display_name||p.username)}</h1><p>@${escapeHtml(p.username)}<br>${escapeHtml(p.bio||'タトゥーアーティスト')}</p></div>${state.me?.id!==id?`<button class="primary-action" data-follow="${id}">${state.following.has(id)?'フォロー中':'フォロー'}</button>`:''}</div><div class="profile-stats"><div class="stat"><b>${list.length}</b><span>投稿</span></div><div class="stat"><b>${followers}</b><span>フォロワー</span></div><div class="stat"><b>${following}</b><span>フォロー中</span></div></div></section>
+    ${list.length?`<div class="post-grid">${list.map(postCard).join('')}</div>`:empty('まだ作品がありません','投稿したタトゥー作品がここに表示されます。')}`;
 }
 
 function render(){ syncNav(); if(state.route==='feed')renderFeed(); else if(state.route==='discover')renderDiscover(); else if(state.route==='saved')renderSaved(); else if(state.route==='notifications')renderNotifications(); else renderProfile(); renderRightRail(); updateBadge(); }
 
-function renderStyleChips(){ $('#styleChips').innerHTML=STYLES.slice(0,6).map(s=>`<button data-search="${s}">${s}</button>`).join(''); }
+function renderStyleChips(){ $('#styleChips').innerHTML=STYLES.slice(0,6).map(s=>`<button data-search="${s}">${styleLabel(s)}</button>`).join(''); }
 function renderRightRail(){
   const target=$('#suggestedArtists'); if(!target)return; const list=state.profiles.filter(p=>p.id!==state.me?.id).slice(0,5);
-  target.innerHTML=list.map(p=>`<div class="artist-row">${avatarHtml(p)}<button class="artist-row-copy" data-profile="${p.id}" style="border:0;background:transparent;text-align:left;padding:0"><strong>${escapeHtml(p.display_name||p.username)}</strong><small>@${escapeHtml(p.username)}</small></button><button data-follow="${p.id}">${state.following.has(p.id)?'Following':'Follow'}</button></div>`).join('');
+  target.innerHTML=list.map(p=>`<div class="artist-row">${avatarHtml(p)}<button class="artist-row-copy" data-profile="${p.id}" style="border:0;background:transparent;text-align:left;padding:0"><strong>${escapeHtml(p.display_name||p.username)}</strong><small>@${escapeHtml(p.username)}</small></button><button data-follow="${p.id}">${state.following.has(p.id)?'フォロー中':'フォロー'}</button></div>`).join('');
 }
 function updateBadge(){ const unread=state.notifications.filter(n=>!n.read_at).length; const b=$('#notificationBadge'); if(b)b.hidden=!unread; }
 
-function requireAuth(){ if(!LIVE)return true; if(state.me)return true; showToast('Sign in to use this feature'); openAuth(); return false; }
+function requireAuth(){ if(!LIVE)return true; if(state.me)return true; showToast('この機能を使うにはログインしてください'); openAuth(); return false; }
 
 async function toggleLike(postId){
   if(!requireAuth())return; const active=state.likes.has(postId); const post=state.posts.find(p=>p.id===postId);
@@ -260,10 +277,10 @@ async function toggleFollow(userId){
 }
 
 function openPost(){ if(!requireAuth())return; postDialog.showModal(); }
-function openAuth(){ if(!LIVE){showToast('Supabase is not connected yet');return;} authDialog.showModal(); }
+function openAuth(){ if(!LIVE){showToast('現在はデモモードです');return;} authDialog.showModal(); }
 
 async function publishPost(e){
-  e.preventDefault(); if(state.busy)return; const file=$('#postImage').files[0]; if(!file){showToast('Choose an image');return;} state.busy=true; $('#publishBtn').textContent='Publishing…';
+  e.preventDefault(); if(state.busy)return; const file=$('#postImage').files[0]; if(!file){showToast('画像を選択してください');return;} state.busy=true; $('#publishBtn').textContent='投稿中…';
   const caption=$('#postCaption').value.trim(); const tags=$('#postTags').value.split(',').map(x=>x.trim().toLowerCase()).filter(Boolean).slice(0,8); const style=tags[0]||'tattoo';
   try {
     let imageUrl;
@@ -276,23 +293,23 @@ async function publishPost(e){
     } else {
       imageUrl=await fileToDataUrl(file); const p={id:crypto.randomUUID(),user_id:state.me.id,image_url:imageUrl,caption,tags,style,created_at:new Date().toISOString(),like_count:0,save_count:0}; state.posts.unshift(p); demoSave();
     }
-    postDialog.close(); e.target.reset(); resetPreview(); go('feed'); showToast('Published'); render();
-  } catch(err){console.error(err);showToast(err.message||'Could not publish');}
-  finally {state.busy=false;$('#publishBtn').textContent='Publish';}
+    postDialog.close(); e.target.reset(); resetPreview(); go('feed'); showToast('投稿しました'); render();
+  } catch(err){console.error(err);showToast(err.message||'投稿できませんでした');}
+  finally {state.busy=false;$('#publishBtn').textContent='投稿する';}
 }
 function fileToDataUrl(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(file);});}
-function resetPreview(){ $('#uploadPreview').innerHTML='<span>＋</span><strong>Add tattoo image</strong><small>JPG, PNG, WEBP</small>'; }
+function resetPreview(){ $('#uploadPreview').innerHTML='<span>＋</span><strong>タトゥー画像を追加</strong><small>JPG / PNG / WEBP</small>'; }
 
 async function submitAuth(e){
   e.preventDefault(); if(!LIVE)return; const email=$('#authEmail').value.trim(), password=$('#authPassword').value;
-  $('#authSubmit').textContent='Please wait…';
+  $('#authSubmit').textContent='処理中…';
   try {
     const result=state.authMode==='signup'?await sb.auth.signUp({email,password}):await sb.auth.signInWithPassword({email,password});
-    if(result.error)throw result.error; authDialog.close(); showToast(state.authMode==='signup'?'Account created':'Signed in');
-  } catch(err){showToast(err.message||'Authentication failed');}
-  finally {$('#authSubmit').textContent=state.authMode==='signup'?'Create account':'Sign in';}
+    if(result.error)throw result.error; authDialog.close(); showToast(state.authMode==='signup'?'アカウントを作成しました':'ログインしました');
+  } catch(err){showToast(err.message||'認証に失敗しました');}
+  finally {$('#authSubmit').textContent=state.authMode==='signup'?'アカウントを作成':'ログイン';}
 }
-function toggleAuthMode(){ state.authMode=state.authMode==='signin'?'signup':'signin'; $('#authTitle').textContent=state.authMode==='signup'?'Create account':'Sign in'; $('#authSubmit').textContent=state.authMode==='signup'?'Create account':'Sign in'; $('#authSwitch').textContent=state.authMode==='signup'?'I already have an account':'Create a new account'; }
+function toggleAuthMode(){ state.authMode=state.authMode==='signin'?'signup':'signin'; $('#authTitle').textContent=state.authMode==='signup'?'アカウント作成':'ログイン'; $('#authSubmit').textContent=state.authMode==='signup'?'アカウントを作成':'ログイン'; $('#authSwitch').textContent=state.authMode==='signup'?'すでにアカウントを持っている':'新しいアカウントを作成'; }
 
 function wireGlobalEvents(){
   window.addEventListener('hashchange',()=>{readRoute();render();});
@@ -308,9 +325,9 @@ function wireGlobalEvents(){
   $('#newPostBtn').addEventListener('click',openPost); $('#mobileNewPost').addEventListener('click',openPost); $('#bottomNewPost').addEventListener('click',openPost);
   $$('.modal-close').forEach(b=>b.addEventListener('click',()=>postDialog.close())); $$('.auth-close').forEach(b=>b.addEventListener('click',()=>authDialog.close()));
   $('#postForm').addEventListener('submit',publishPost); $('#authForm').addEventListener('submit',submitAuth); $('#authSwitch').addEventListener('click',toggleAuthMode);
-  $('#postImage').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('#uploadPreview').innerHTML=`<img src="${r.result}" alt="Preview">`;};r.readAsDataURL(f);});
+  $('#postImage').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('#uploadPreview').innerHTML=`<img src="${r.result}" alt="プレビュー">`;};r.readAsDataURL(f);});
   $('#globalSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){state.search=e.target.value;go('discover');render();}});
-  $('#authBtn').addEventListener('click',async()=>{if(LIVE&&state.me){await sb.auth.signOut();showToast('Signed out');}else openAuth();});
+  $('#authBtn').addEventListener('click',async()=>{if(LIVE&&state.me){await sb.auth.signOut();showToast('ログアウトしました');}else openAuth();});
 }
 
 boot();
